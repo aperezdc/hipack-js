@@ -20,6 +20,7 @@ function DumpError(message) {
 		this.stack = Error().stack;
 	}
 }
+module.exports.DumpError = DumpError;
 
 
 function Dumper(compact) {
