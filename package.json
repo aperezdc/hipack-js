@@ -1,0 +1,28 @@
+{
+  "name": "hipack",
+  "version": "0.0.1",
+  "description": "HiPack (de)serialization module",
+  "main": "hipack.js",
+  "scripts": {
+    "test": "./node_modules/mocha/bin/mocha"
+  },
+  "devDependencies": {
+    "should": ">=7.0.0",
+    "mocha": ">=2.2.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aperezdc/hipack-js.git"
+  },
+  "keywords": [
+    "hipack",
+    "serialization",
+    "parser"
+  ],
+  "author": "Adrián Pérez de Castro <aperez@igalia.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/aperezdc/hipack-js/issues"
+  },
+  "homepage": "https://github.com/aperezdc/hipack-js#readme"
+}
