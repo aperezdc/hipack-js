@@ -9,6 +9,29 @@ var hipack = require("../hipack");
 var should = require("should");
 
 describe("hipack", function () {
+	it("has a .dump() function", function () {
+		hipack.should.have.property("dump").which.is.a.Function();
+	});
+	it("has a .load() function", function () {
+		hipack.should.have.property("load").which.is.a.Function();
+	});
+	it("has a Dumper() function", function () {
+		hipack.should.have.property("Dumper").which.is.a.Function();
+	});
+	if("has a Parser() function", function () {
+		hipack.should.have.property("Parser").which.is.a.Function();
+	});
+	it("has a DumpError() function", function () {
+		hipack.should.have.property("DumpError").which.is.a.Function();
+	});
+	it("has a ParseError() function", function () {
+		hipack.should.have.property("ParseError").which.is.a.Function();
+	});
+	it("has a noConflict() function", function () {
+		hipack.should.have.property("noConflict").which.is.a.Function();
+	});
+
+
 	describe(".dump()", function () {
 
 		it("encodes empty objects", function () {
@@ -71,10 +94,120 @@ describe("hipack", function () {
 		if (typeof Symbol !== "undefined") {
 			it("cannot encode symbols", function () {
 				(function () {
-					hipack.dump({ value: new Symbol() });
+					hipack.dump({ value: Symbol("aSymbol") });
 				}).should.throw(hipack.DumpError);
 			});
 		}
+
+	});
+
+
+	describe(".load()", function () {
+
+		it("decodes boolean values", function () {
+			hipack.load("value: True").should.have.property("value")
+				.which.is.a.Boolean().and.is.True();
+			hipack.load("value: true").should.have.property("value")
+				.which.is.a.Boolean().and.is.True();
+			hipack.load("value: False").should.have.property("value")
+				.which.is.a.Boolean().and.is.False();
+			hipack.load("value: false").should.have.property("value")
+				.which.is.a.Boolean().and.is.False();
+		});
+		it("decodes integer values", function () {
+			hipack.load("value: 42").should.have.property("value")
+				.which.is.a.Number().and.is.equal(42);
+		});
+		it("decodes negative integer values", function () {
+			hipack.load("value: -42").should.have.property("value")
+				.which.is.a.Number().and.is.equal(-42);
+		});
+		it("decodes hex integer values", function () {
+			hipack.load("value: 0xCAFE").should.have.property("value")
+				.which.is.a.Number().and.is.equal(0xCAFE);
+		});
+		it("decodes negative hex integer values", function () {
+			hipack.load("value: -0xCAFE").should.have.property("value")
+				.which.is.a.Number().and.is.equal(-0xCAFE);
+		});
+		it("decodes octal integer values", function () {
+			hipack.load("value: 01755").should.have.property("value")
+				.which.is.a.Number().and.is.equal(01755);
+		});
+		it("decodes negative octal integer values", function () {
+			hipack.load("value: -01755").should.have.property("value")
+				.which.is.a.Number().and.is.equal(-01755);
+		});
+		it("decodes floating point values", function () {
+			hipack.load("value: 3.14").should.have.property("value")
+				.which.is.a.Number().and.is.equal(3.14);
+			hipack.load("value: -3.14").should.have.property("value")
+				.which.is.a.Number().and.is.equal(-3.14);
+			hipack.load("value: -3.14e4").should.have.property("value")
+				.which.is.a.Number().and.is.equal(-3.14e4);
+			hipack.load("value: 3.14e-4").should.have.property("value")
+				.which.is.a.Number().and.is.equal(3.14e-4);
+			hipack.load("value: -3.14e-4").should.have.property("value")
+				.which.is.a.Number().and.is.equal(-3.14e-4);
+			hipack.load("value: 3e4").should.have.property("value")
+				.which.is.a.Number().and.is.equal(3e4);
+			hipack.load("value: -3e4").should.have.property("value")
+				.which.is.a.Number().and.is.equal(-3e4);
+		});
+		it("decodes string values", function () {
+			hipack.load("value: \"Spam\"").should.have.property("value")
+				.which.is.a.String().and.is.equal("Spam");
+		});
+		it("decodes empty list values", function () {
+			hipack.load("value: []").should.have.property("value")
+				.which.is.an.Array().and.is.empty();
+		});
+		it("decodes list values", function () {
+			hipack.load("value: [True, False, True]")
+				.should.have.property("value")
+				.which.is.an.Array().and.is.eql([true, false, true]);
+		});
+		it("decodes empty dictionary values", function () {
+			hipack.load("value: {}").should.have.property("value")
+				.which.is.an.Object().and.is.eql({});
+		});
+		it("decodes dictionary values", function () {
+			hipack.load("value: { value: True }")
+				.should.have.property("value")
+				.which.is.an.Object().eql({ value: true });
+		});
+		it("decodes space-separated list items", function () {
+			hipack.load("value: [1 2 3]").should.have.property("value")
+				.which.is.an.Array().and.is.eql([1, 2, 3]);
+		});
+		it("decodes comma-separated list items", function () {
+			hipack.load("value: [1,2, 3]").should.have.property("value")
+				.which.is.an.Array().and.is.eql([1, 2, 3]);
+		});
+		it("decodes mixed-separated list items", function () {
+			hipack.load("value: [1,2 3]").should.have.property("value")
+				.which.is.an.Array().and.is.eql([1, 2, 3]);
+		});
+		it("decodes space-separated dict items", function () {
+			hipack.load("value { a:1 b:2 }").should.have.property("value")
+				.which.is.an.Object().and.is.eql({ a:1, b:2 });
+		});
+		it("decodes comma-separated dict items", function () {
+			hipack.load("value { a:1,b:2 }").should.have.property("value")
+				.which.is.an.Object().and.is.eql({ a:1, b:2 });
+		});
+		it("decodes mixed-separated dict items", function () {
+			hipack.load("value { a:1,b:2 c:3 }").should.have.property("value")
+				.which.is.an.Object().and.is.eql({ a:1, b:2, c:3 });
+		});
+		it("decodes dict items which omit colon-after-key", function () {
+			hipack.load("value { a 1, b 2 }").should.have.property("value")
+				.which.is.an.Object().and.is.eql({ a:1, b:2 });
+		});
+		it("decodes space-separated dict items which omit colon-after-key", function () {
+			hipack.load("value { a 1 b 2 }").should.have.property("value")
+				.which.is.an.Object().and.is.eql({ a:1, b:2 });
+		});
 
 	});
 });

@@ -6,184 +6,608 @@
  */
 
 "use strict";
+(function () {
+	var root = this;
+	var previousModule = root.hipack;
 
-var _hasOwnProperty = Object.prototype.hasOwnProperty;
-var _objectKeys = Object.keys;
-var _isArray = Array.isArray;
-
-
-function DumpError(message) {
-	this.message = message;
-	if (Error.captureStackTrace) {
-		Error.captureStackTrace(this, this.constructor);
-	} else {
-		this.stack = Error().stack;
+	var hipack = {};
+	hipack.noConflict = function () {
+		root.hipack = previousModule;
+		return hipack;
 	}
-}
-module.exports.DumpError = DumpError;
 
 
-function Dumper(compact) {
-	this.indent = compact ? -1 : 0;
-	this.output = "";
-}
-Dumper.prototype.moreIndent = function () {
-	if (this.indent >= 0) this.indent++;
-}
-Dumper.prototype.lessIndent = function () {
-	if (this.indent > 0) this.indent--;
-}
-Dumper.prototype.dumpIndent = function () {
-	var indent = (this.indent >= 0) ? this.indent : 0;
-	while (indent--) this.output += "  ";
-}
-Dumper.prototype.dumpString = function (value) {
-	// assert(typeof value === "string")
-	this.output += "\"";
-	for (var i = 0; i < value.length; i++) {
-		var ch = value.charCodeAt(i);
+	function isHiPackWhitespace(ch) {
 		switch (ch) {
 			case 0x09: /* Horizontal tab. */
-				this.output += "\\t";
-				break;
 			case 0x0A: /* New line. */
-				this.output += "\\n";
-				break;
 			case 0x0D: /* Carriage return. */
-				this.output += "\\r";
-				break;
-			case 0x22: /* Double quote. */
-				this.output += "\\\"";
-				break;
-			case 0x5C: /* Backslash. */
-				this.output += "\\\\";
-				break;
+			case 0x20: /* Space. */
+				return true;
 			default:
-				if (ch < 0x20) {
-					/* ASCII non-printable character. */
-					this.output += "\\";
-					if (ch < 16) {
-						/* Add a leading zero. */
-						this.output += "0";
+				return false;
+		}
+	}
+
+
+	function isHiPackKeyCharacter(ch) {
+		switch (ch) {
+			/* Keys do not contain whitespace. */
+			case 0x09: /* Horizontal tab. */
+			case 0x0A: /* New line. */
+			case 0x0D: /* Carriage return. */
+			case 0x20: /* Space. */
+			/* Characters forbidden in keys by the spec. */
+			case 0x5B: /* '[' */
+			case 0x5D: /* ']' */
+			case 0x7B: /* '{' */
+			case 0x7D: /* '}' */
+			case 0x3A: /* ':' */
+			case 0x2C: /* ',' */
+				return false;
+			default:
+				return true;
+		}
+	}
+
+
+	function isHexDigit(ch) {
+		switch (ch) {
+			case 0x30: /* '0' */
+			case 0x31: /* '1' */
+			case 0x32: /* '2' */
+			case 0x33: /* '3' */
+			case 0x34: /* '4' */
+			case 0x35: /* '5' */
+			case 0x36: /* '6' */
+			case 0x37: /* '7' */
+			case 0x38: /* '8' */
+			case 0x39: /* '9' */
+			case 0x61: /* 'a' */ case 0x41: /* 'A' */
+			case 0x62: /* 'b' */ case 0x42: /* 'B' */
+			case 0x63: /* 'c' */ case 0x43: /* 'C' */
+			case 0x64: /* 'd' */ case 0x44: /* 'D' */
+			case 0x65: /* 'e' */ case 0x45: /* 'E' */
+			case 0x66: /* 'f' */ case 0x46: /* 'F' */
+				return true;
+			default:
+				return false;
+		}
+	}
+
+
+	function isNumberCharacter(ch) {
+		switch (ch) {
+			case 0x2E: /* '.' */
+			case 0x2B: /* '+' */
+			case 0x3D: /* '-' */
+				return true;
+			default:
+				return isHexDigit(ch);
+		}
+	}
+
+
+	function isOctalNonZeroDigit(ch) {
+		return (ch > 0x30 /* '0' */) && (ch < 0x38 /* '8' */);
+	}
+
+
+	function hexDigitToInt(xdigit) {
+		// TODO: Check that the digit is in range.
+
+		switch (xdigit) {
+			case 0x30: /* '0' */ return 0;
+			case 0x31: /* '1' */ return 1;
+			case 0x32: /* '2' */ return 2;
+			case 0x33: /* '3' */ return 3;
+			case 0x34: /* '4' */ return 4;
+			case 0x35: /* '5' */ return 5;
+			case 0x36: /* '6' */ return 6;
+			case 0x37: /* '7' */ return 7;
+			case 0x38: /* '8' */ return 8;
+			case 0x39: /* '9' */ return 9;
+			case 0x61: /* 'a' */ case 0x41: /* 'A' */ return 0xA;
+			case 0x62: /* 'b' */ case 0x42: /* 'B' */ return 0xB;
+			case 0x63: /* 'c' */ case 0x43: /* 'C' */ return 0xC;
+			case 0x64: /* 'd' */ case 0x44: /* 'D' */ return 0xD;
+			case 0x65: /* 'e' */ case 0x45: /* 'E' */ return 0xE;
+			case 0x66: /* 'f' */ case 0x46: /* 'F' */ return 0xF;
+			default: // TODO: What to do in this case? assert? throw?
+		}
+	}
+
+
+	var _hasOwnProperty = Object.prototype.hasOwnProperty;
+	var _objectKeys = Object.keys;
+	var _isArray = Array.isArray;
+
+
+	hipack.DumpError = function (message) {
+		this.message = message;
+		if (Error.captureStackTrace) {
+			Error.captureStackTrace(this, this.constructor);
+		} else {
+			this.stack = Error().stack;
+		}
+	}
+
+
+	hipack.Dumper = function (compact) {
+		this.indent = compact ? -1 : 0;
+		this.output = "";
+	}
+	hipack.Dumper.prototype.moreIndent = function () {
+		if (this.indent >= 0) this.indent++;
+	}
+	hipack.Dumper.prototype.lessIndent = function () {
+		if (this.indent > 0) this.indent--;
+	}
+	hipack.Dumper.prototype.dumpIndent = function () {
+		var indent = (this.indent >= 0) ? this.indent : 0;
+		while (indent--) this.output += "  ";
+	}
+	hipack.Dumper.prototype.dumpString = function (value) {
+		// assert(typeof value === "string")
+		this.output += "\"";
+		for (var i = 0; i < value.length; i++) {
+			var ch = value.charCodeAt(i);
+			switch (ch) {
+				case 0x09: /* Horizontal tab. */
+					this.output += "\\t";
+					break;
+				case 0x0A: /* New line. */
+					this.output += "\\n";
+					break;
+				case 0x0D: /* Carriage return. */
+					this.output += "\\r";
+					break;
+				case 0x22: /* Double quote. */
+					this.output += "\\\"";
+					break;
+				case 0x5C: /* Backslash. */
+					this.output += "\\\\";
+					break;
+				default:
+					if (ch < 0x20) {
+						/* ASCII non-printable character. */
+						this.output += "\\";
+						if (ch < 16) {
+							/* Add a leading zero. */
+							this.output += "0";
+						}
+						this.output += ch.toString(16).toUpperCase();
+					} else {
+						this.output += value.charAt(i);
 					}
-					this.output += ch.toString(16).toUpperCase();
-				} else {
-					this.output += value.charAt(i);
-				}
+			}
+		}
+		this.output += "\"";
+	}
+	hipack.Dumper.prototype.dumpBoolean = function (value) {
+		// assert(typeof value === "boolean")
+		this.output += value ? "True" : "False";
+	}
+	hipack.Dumper.prototype.dumpNumber = function (value) {
+		// assert(typeof value === "number")
+		this.output += value.toString();
+	}
+	hipack.Dumper.prototype.dumpKeyVal = function (obj, keys) {
+		for (var i = 0; i < keys.length; i++) {
+			this.dumpIndent();
+			this.output += keys[i];
+			var value = obj[keys[i]];
+
+			/* Only write colon for simple (non-compound) objects. */
+			if (typeof value !== "object")
+				this.output += ":";
+
+			/* Do not write the extra space in compact mode. */
+			if (this.indent >= 0)
+				this.output += " ";
+
+			this.dumpValue(value);
+
+			if (this.indent >= 0) {
+				this.output += "\n";
+			} else if (i < keys.length-1) {
+				this.output += ",";
+			}
 		}
 	}
-	this.output += "\"";
-}
-Dumper.prototype.dumpBoolean = function (value) {
-	// assert(typeof value === "boolean")
-	this.output += value ? "True" : "False";
-}
-Dumper.prototype.dumpNumber = function (value) {
-	// assert(typeof value === "number")
-	this.output += value.toString();
-}
-Dumper.prototype.dumpKeyVal = function (obj, keys) {
-	for (var i = 0; i < keys.length; i++) {
-		this.dumpIndent();
-		this.output += keys[i];
-		var value = obj[keys[i]];
+	hipack.Dumper.prototype.dumpList = function (list) {
+		if (list.length == 0) {
+			this.output += "[]";
+			return;
+		}
 
-		/* Only write colon for simple (non-compound) objects. */
-		if (typeof value !== "object")
-			this.output += ":";
+		this.output += "[";
+		this.moreIndent();
 
-		/* Do not write the extra space in compact mode. */
+		/* Do not write the newline in compact mode. */
 		if (this.indent >= 0)
-			this.output += " ";
-
-		this.dumpValue(value);
-
-		if (this.indent >= 0) {
 			this.output += "\n";
-		} else if (i < keys.length-1) {
-			this.output += ",";
+
+		for (var i = 0; i < list.length; i++) {
+			this.dumpIndent();
+			this.dumpValue(list[i]);
+			if (this.indent >= 0) {
+				this.output += "\n";
+			} else if (i < list.length-1) {
+				this.output += ",";
+			}
 		}
+		this.lessIndent();
+		this.output += "]";
 	}
-}
-Dumper.prototype.dumpList = function (list) {
-	if (list.length == 0) {
-		this.output += "[]";
-		return;
-	}
+	hipack.Dumper.prototype.dumpDict = function (dict) {
+		var keys = _objectKeys(dict);
+		if (keys.length == 0) {
+			this.output += "{}";
+			return;
+		}
 
-	this.output += "[";
-	this.moreIndent();
+		this.output += "{";
+		this.moreIndent();
 
-	/* Do not write the newline in compact mode. */
-	if (this.indent >= 0)
-		this.output += "\n";
+		/* Do not write the newline in compact mode. */
+		if (this.indent >= 0)
+			this.output += "\n";
 
-	for (var i = 0; i < list.length; i++) {
+		this.dumpKeyVal(dict, keys.sort());
+
+		this.lessIndent();
 		this.dumpIndent();
-		this.dumpValue(list[i]);
-		if (this.indent >= 0) {
-			this.output += "\n";
-		} else if (i < list.length-1) {
-			this.output += ",";
+		this.output += "}";
+	}
+	hipack.Dumper.prototype.dumpValue = function (value) {
+		var valueType = typeof value;
+		switch (valueType) {
+			case "number":
+				this.dumpNumber(value);
+				break;
+			case "boolean":
+				this.dumpBoolean(value);
+				break;
+			case "string":
+				this.dumpString(value);
+				break;
+			case "object":
+				if (value === null) {
+					valueType = "null";
+				} else {
+					if (_isArray(value)) {
+						this.dumpList(value);
+					} else {
+						this.dumpDict(value);
+					}
+					break;
+				}
+				/* fall-through */
+			default:
+				throw new hipack.DumpError("Values of type '" +
+						valueType + "' cannot be dumped");
 		}
 	}
-	this.lessIndent();
-	this.output += "]";
-}
-Dumper.prototype.dumpDict = function (dict) {
-	var keys = _objectKeys(dict);
-	if (keys.length == 0) {
-		this.output += "{}";
-		return;
+
+
+	hipack.dump = function (data, compact) {
+		var dumper = new hipack.Dumper(Boolean(compact));
+		var keys = _objectKeys(data);
+		dumper.dumpKeyVal(data, keys.sort());
+		return dumper.output;
 	}
 
-	this.output += "{";
-	this.moreIndent();
 
-	/* Do not write the newline in compact mode. */
-	if (this.indent >= 0)
-		this.output += "\n";
+	var EOF = -1;
+	var _parseInt = Number.parseInt;
+	var _parseFloat = Number.parseFloat;
+	var _fromCharCode = String.fromCharCode;
 
-	this.dumpKeyVal(dict, keys.sort());
+	hipack.ParseError = function (parser, message) {
+		this.message  = message;
+		this.position = parser.pos;
+		this.line     = parser.line;
+		this.column   = parser.column;
+		if (Error.captureStackTrace) {
+			Error.captureStackTrace(this, this.constructor);
+		} else {
+			this.stack = Error().stack;
+		}
+	}
 
-	this.lessIndent();
-	this.dumpIndent();
-	this.output += "}";
-}
-Dumper.prototype.dumpValue = function (value) {
-	var valueType = typeof value;
-	switch (valueType) {
-		case "number":
-			this.dumpNumber(value);
-			break;
-		case "boolean":
-			this.dumpBoolean(value);
-			break;
-		case "string":
-			this.dumpString(value);
-			break;
-		case "object":
-			if (value === null) {
-				valueType = "null";
-			} else {
-				if (_isArray(value)) {
-					this.dumpList(value);
-				} else {
-					this.dumpDict(value);
+
+	hipack.Parser = function (input) {
+		this.input  = input;
+		this.look   = 0;
+		this.line   = 1;
+		this.column = 0;
+		this.pos    = 0;
+	}
+	hipack.Parser.prototype.nextCharCodeRaw = function () {
+		if (this.pos >= this.input.length)
+			return EOF;
+
+		var ch = this.input.charCodeAt(this.pos++);
+		if (ch == 0x0A /* '\n' */) {
+			this.column = 0;
+			this.line++;
+		}
+		this.column++;
+		return ch;
+	}
+	hipack.Parser.prototype.nextCharCode = function () {
+		do {
+			this.look = this.nextCharCodeRaw();
+			if (this.look == 0x23 /* '#' */) {
+				while (this.look != 0x0A /* '\n' */ && this.look != EOF) {
+					this.look = this.nextCharCodeRaw();
 				}
+			}
+		} while (this.look != EOF && this.look == 0x23 /* '#' */);
+	}
+	hipack.Parser.prototype.skipWhite = function () {
+		while (this.look != EOF && isHiPackWhitespace(this.look))
+			this.nextCharCode();
+	}
+	hipack.Parser.prototype.matchCharCode = function (ch, errmsg) {
+		if (this.look != ch) {
+			if (errmsg === undefined) {
+				errmsg = "Expected '" + _fromCharCode(ch) + "', but '" +
+					_fromCharCode(this.look) + "' was found instead";
+			}
+			throw new hipack.ParseError(this, message);
+		}
+		this.nextCharCode();
+	}
+	hipack.Parser.prototype.parseKey = function () {
+		var key = null;
+		while (this.look != EOF && isHiPackKeyCharacter(this.look)) {
+			if (key === null) key = "";
+			key += _fromCharCode(this.look);
+			this.nextCharCode();
+		}
+		if (key === null)
+			throw new hipack.ParseError(parser, "key expected");
+		return key;
+	}
+	hipack.Parser.prototype.parseString = function () {
+		var str = "";
+		this.matchCharCode(0x22 /* '"' */);
+		while (this.look != 0x22 /* '"' */ && this.look != EOF) {
+			/* Handle escapes. */
+			if (this.look == 0x5C /* '\\' */) {
+				switch (this.look = this.nextCharCodeRaw()) {
+					case 0x22 /* '"'  */: this.look = 0x22 /* '"'  */; break;
+					case 0x6E /* 'n'  */: this.look = 0x0A /* '\n' */; break;
+					case 0x72 /* 'r'  */: this.look = 0x0D /* '\r' */; break;
+					case 0x74 /* 't'  */: this.look = 0x09 /* '\t' */; break;
+					case 0x5C /* '\\' */: this.look = 0x5C /* '\\' */; break;
+					default:
+						/* Hex number. */
+						var extra = this.nextCharCodeRaw();
+						if (!isHexDigit(extra) || !isHexDigit(this.look)) {
+							throw new hipack.ParseError(this, "invalid escape sequence");
+						}
+						this.look = (hexDigitToInt(this.look) * 16) + hexDigitToInt(extra);
+				}
+			}
+			str += _fromCharCode(this.look);
+			this.look = this.nextCharCodeRaw();
+		}
+		this.matchCharCode(0x22 /* '"'" */);
+		return str;
+	}
+	hipack.Parser.prototype.parseList = function () {
+		this.matchCharCode(0x5B /* '[' */);
+		this.skipWhite();
+
+		var list = [];
+		while (this.look != 0x5D /* ']' */) {
+			list.push(this.parseValue());
+			var gotWhitespace = isHiPackWhitespace(this.look);
+			this.skipWhite();
+
+			/* There must be either a comma or whitespace after the value. */
+			if (this.look == 0x2C /* ',' */) {
+				this.nextCharCode();
+			} else if (!gotWhitespace && !isHiPackWhitespace(this.look)) {
 				break;
 			}
-		default:
-			throw new DumpError("Values of type '" + valueType + "' cannot be dumped");
+			this.skipWhite();
+		}
+
+		this.matchCharCode(0x5D /* ']' */);
+		return list;
 	}
-}
+	hipack.Parser.prototype.parseDict = function () {
+		this.matchCharCode(0x7B /* '{' */);
+		this.skipWhite();
+		var dict = this.parseKeyValItems(0x7D /* '}' */);
+		this.matchCharCode(0x7D /* '}' */);
+		return dict;
+	}
+	hipack.Parser.prototype.parseBoolean = function () {
+		if (this.look == 0x54 /* 'T' */ || this.look == 0x74 /* 't' */) {
+			this.nextCharCode();
+			this.matchCharCode(0x72 /* 'r' */);
+			this.matchCharCode(0x75 /* 'u' */);
+			this.matchCharCode(0x65 /* 'e' */);
+			return true;
+		} else if (this.look = 0x46 /* 'F' */ || this.look == 0x66 /* 'f' */) {
+			this.nextCharCode();
+			this.matchCharCode(0x61 /* 'a' */);
+			this.matchCharCode(0x6C /* 'l' */);
+			this.matchCharCode(0x73 /* 's' */);
+			this.matchCharCode(0x65 /* 'e' */);
+			return false;
+		} else {
+			throw new hipack.ParseError(this, "boolean value expected");
+		}
+	}
+	hipack.Parser.prototype.parseNumber = function () {
+		var number = "";
+		var hasSign = false;
+		if (this.look == 0x2B /* '+' */ || this.look == 0x2D /* '-' */) {
+			number += _fromCharCode(this.look);
+			this.nextCharCode();
+			hasSign = true;
+		}
+
+		var isOctal = false;
+		var isHex = false;
+		if (this.look == 0x30 /* '0' */) {
+			number += "0";
+			this.nextCharCode();
+			if (this.look == 0x58 /* 'X' */ || this.look == 0x78 /* 'x' */) {
+				number += _fromCharCode(this.look);
+				this.nextCharCode();
+				isHex = true;
+			} else if (isOctalNonZeroDigit(this.look)) {
+				isOctal = true;
+			}
+		}
+
+		var dotSeen = false;
+		var expSeen = false;
+		while (this.look != EOF && isNumberCharacter(this.look)) {
+			if (!isHex && (this.look == 0x45 /* 'E' */ ||
+						   this.look == 0x65 /* 'e' */)) {
+				if (expSeen) {
+					throw new hipack.ParseError(this, "invalid number");
+				}
+				number += "e";
+				expSeen = true;
+				this.nextCharCode();
+				/* Optional exponent sign. */
+				if (this.look == 0x2B /* '+' */ || this.look == 0x2D /* '-' */) {
+					number += _fromCharCode(this.look);
+					this.nextCharCode();
+				}
+			} else {
+				if (this.look == 0x2E /* '.' */) {
+					if (dotSeen || isHex || isOctal) {
+						throw new hipack.ParseError(this, "invalid number");
+					}
+					dotSeen = true;
+				}
+				if (this.look == 0x2B /* '+' */ || this.look == 0x2D /* '-' */) {
+					throw new hipack.ParseError(this, "invalid number");
+				}
+				number += _fromCharCode(this.look);
+				this.nextCharCode();
+			}
+		}
+
+		if (number.length == 0) {
+			throw new hipack.ParseError(this, "number expected");
+		}
+
+		if (isHex) {
+			// TODO: assert(!isOctal);
+			if (expSeen || dotSeen) {
+				throw new hipack.ParseError(this, "invalid hex number");
+			}
+			return _parseInt(number, 16);
+		} else if (isOctal) {
+			// TODO: assert(!isHex);
+			if (expSeen || dotSeen) {
+				throw new hipack.ParseError(this, "invalid octal number");
+			}
+			return _parseInt(number, 8);
+		} else if (dotSeen || expSeen) {
+			// TODO: assert(!isHex);
+			// TODO: assert(!isOctal);
+			return _parseFloat(number);
+		} else {
+			// TODO: assert(!isHex);
+			// TODO: assert(!isOctal);
+			// TODO: assert(!expSeen);
+			// TODO: assert(!dotSeen);
+			return _parseInt(number, 10);
+		}
+	}
+	hipack.Parser.prototype.parseValue = function () {
+		switch (this.look) {
+			case 0x22 /* '"' */: return this.parseString();
+			case 0x5B /* '[' */: return this.parseList();
+			case 0x7B /* '{' */: return this.parseDict();
+			case 0x54 /* 'T' */:
+			case 0x74 /* 't' */:
+			case 0x46 /* 'F' */:
+			case 0x66 /* 'f' */: return this.parseBoolean();
+			default: return this.parseNumber();
+		}
+	}
+	hipack.Parser.prototype.parseKeyValItems = function (eos) {
+		var dict = {};
+		while (this.look != eos) {
+			var key = this.parseKey();
+			var gotSeparator = false;
+
+			if (isHiPackWhitespace(this.look)) {
+				gotSeparator = true;
+				this.skipWhite();
+			}
+			switch (this.look) {
+				case 0x3A /* ':' */:
+					this.nextCharCode();
+					this.skipWhite();
+					/* fall-through */
+				case 0x7B /* '{' */:
+				case 0x5B /* '[' */:
+					gotSeparator = true;
+					break
+			}
+
+			if (!gotSeparator) {
+				throw new hipack.ParseError(this, "missing separator");
+			}
+
+			dict[key] = this.parseValue();
+
+			/*
+			 * There must be either a comma or a whitespace after the value, or
+			 * the end-of-sequence character.
+			 */
+			if (this.look == 0x2C /* ',' */) {
+				this.nextCharCode();
+			} else if (this.look != eos && !isHiPackWhitespace(this.look)) {
+				break;
+			}
+			this.skipWhite();
+		}
+		return dict;
+	}
+	hipack.Parser.prototype.parseMessage = function () {
+		this.nextCharCode();
+		this.skipWhite();
+
+		var result = null;
+		if (this.look == 0x7B /* '{' */) {
+			/* Input starts with a dictionary marker. */
+			this.nextCharCode();
+			this.skipWhite();
+			result = this.parseKeyValItems(0x7D /* '}' */);
+			this.matchCharCode(0x7D /* '}' */, "unterminated message, '}' expected");
+		} else {
+			result = this.parseKeyValItems(EOF);
+		}
+		return result;
+	}
 
 
-function dump(data, compact) {
-	var dumper = new Dumper(Boolean(compact));
-	var keys = _objectKeys(data);
-	dumper.dumpKeyVal(data, keys.sort());
-	return dumper.output;
-}
+	hipack.load = function (input) {
+		return (new hipack.Parser(String(input))).parseMessage();
+	}
 
-module.exports.dump = dump;
+
+	if (typeof exports !== "undefined") {
+		if (typeof module !== "undefined" && module.exports) {
+			exports = module.exports = hipack;
+		}
+		exports.hipack = hipack;
+	} else {
+		root.hipack = hipack;
+	}
+}).call(this)
