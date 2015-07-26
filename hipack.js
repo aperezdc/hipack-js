@@ -118,7 +118,6 @@
 	}
 
 
-	var _hasOwnProperty = Object.prototype.hasOwnProperty;
 	var _objectKeys = Object.keys;
 	var _isArray = Array.isArray;
 
