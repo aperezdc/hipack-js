@@ -9,7 +9,13 @@
   "moduleType": ["node", "globals"],
   "homepage": "https://github.com/aperezdc/hipack-js",
   "repository": {
-  	  "type": "git",
-  	  "url": "git://github.com/aperezdc/hipack-js.git"
-  }
+    "type": "git",
+    "url": "git://github.com/aperezdc/hipack-js.git"
+  },
+  "ignore": [
+  	"**/.*",
+  	"node_modules",
+  	"bower_components",
+  	"test"
+  ]
 }
