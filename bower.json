@@ -1,0 +1,15 @@
+{
+  "name": "hipack-js",
+  "version": "0.1.0",
+  "description": "HiPack (de)serialization module",
+  "keywords": ["hipack", "serialization", "parser"],
+  "authors": "Adrián Pérez de Castro <aperez@igalia.com>",
+  "license": "MIT",
+  "main": "hipack.js",
+  "moduleType": ["node", "globals"],
+  "homepage": "https://github.com/aperezdc/hipack-js",
+  "repository": {
+  	  "type": "git",
+  	  "url": "git://github.com/aperezdc/hipack-js.git"
+  }
+}
