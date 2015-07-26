@@ -1,6 +1,8 @@
 HiPack (de)serialization library in JavaScript
 ==============================================
 
+[![Builld status](https://img.shields.io/travis/aperezdc/hipack-js.svg?style=flat-square)](https://travis-ci.org/aperezdc/hipack-js)
+
 JavaScript module to work with the [HiPack](http://hipack.org) serialization
 format. The implementation and API are intentionally simple.
 
