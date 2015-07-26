@@ -7,24 +7,54 @@ format. The implementation and API are intentionally simple.
 Features:
 
 * Reading and writing HiPack formatted messages.
-* Small, self contained JavaScript implementation.
 * Works in NodeJS, IoJS, and browsers.
+* Small, self contained JavaScript implementation.
+* Less than 8kB when minified using [UglifyJS2](http://lisperator.net/uglifyjs/)!
+
+
+Installation
+------------
+
+For [Node](http://nodejs.org) (or [IoJS](http://iojs.org)), `npm` can be used
+to install the module:
+
+```sh
+npm install hipack-js
+```
+
+A `hipack-js` package is also available to be used with
+[Bower](http://bower.io):
+
+```sh
+bower install hipack-js
+```
 
 
 Usage
 -----
 
+(The following examples use [Node](http://nodejs.org), and should work with
+[IoJS](http://iojs.org) as well.)
+
+First, import the module:
+
 ```javascript
-var hipack = require("hipack");
-console.info(hipack.dump({
+var hipack = require("hipack")
+```
+
+To serialize an object containing data, use `hipack.dump()`:
+
+```javascript
+var hiPackText = hipack.dump({
   authors: [
     { name: "Adrián Pérez", email: "aperez@igalia.com" },
     { name: "John Doe", email: "j@doe.org" },
   ]
-}));
+});
+console.info(hiPackText);
 ```
 
-will generate the following output:
+The call to `console.info()` will output the following
 
 ```
 authors [
@@ -39,13 +69,37 @@ authors [
 ]
 ```
 
+Optionally, pass `true` as a second parameter to `hipack.dump()` in order to
+generate a “compact” representation of the data with indentation and
+whitespace removed, all in a single line.
 
-Installation
-------------
+Parsing is done using the `hipack.load()` function:
 
-With `npm`:
-
-```sh
-npm install hipack
+```javascript
+var data = hipack.load(hiPackText);
 ```
 
+
+Browser Usage
+-------------
+
+The [hipack.js](./blob/master/hipack.js) script can be directly used with
+a `<script>` tag (a [minified version](./blob/master/hipack.min.js) is also
+available):
+
+```html
+<!-- This creates a global "hipack" object -->
+<script type="text/javascript" src="hipack.js"></script>
+```
+
+If the `hipack` global name needs to be used for other purposes,
+a `hipack.noConflict()` function is provided, which will restore its previous
+value and return the `hipack` object:
+
+```html
+<script type="text/javascript">
+  var myHiPack = hipack.noConflict();
+  <!-- Now the API functions are in "myHiPack" -->
+  var data = myHiPack.load( ... );
+</script>
+```
