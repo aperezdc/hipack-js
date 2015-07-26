@@ -433,7 +433,7 @@
 			this.matchCharCode(0x75 /* 'u' */);
 			this.matchCharCode(0x65 /* 'e' */);
 			return true;
-		} else if (this.look = 0x46 /* 'F' */ || this.look == 0x66 /* 'f' */) {
+		} else if (this.look == 0x46 /* 'F' */ || this.look == 0x66 /* 'f' */) {
 			this.nextCharCode();
 			this.matchCharCode(0x61 /* 'a' */);
 			this.matchCharCode(0x6C /* 'l' */);
