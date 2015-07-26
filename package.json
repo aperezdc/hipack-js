@@ -1,6 +1,6 @@
 {
   "name": "hipack",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "HiPack (de)serialization module",
   "main": "hipack.js",
   "scripts": {
