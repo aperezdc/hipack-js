@@ -100,7 +100,7 @@ value and return the `hipack` object:
 ```html
 <script type="text/javascript">
   var myHiPack = hipack.noConflict();
-  <!-- Now the API functions are in "myHiPack" -->
+  // Now the API functions are in "myHiPack"
   var data = myHiPack.load( ... );
 </script>
 ```
