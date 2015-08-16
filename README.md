@@ -85,7 +85,7 @@ var data = hipack.load(hiPackText);
 Browser Usage
 -------------
 
-The [hipack.js](/aperezdc/hipack-js/blob/master/hipack.js) script can be
+The [hipack.js](//github.com/aperezdc/hipack-js/blob/master/hipack.js) script can be
 directly used with a `<script>` tag (a [minified
 version](//aperezdc/hipack-js/blob/master/hipack.min.js) is also available):
 
