@@ -355,7 +355,7 @@
 				errmsg = "Expected '" + _fromCharCode(ch) + "', but '" +
 					_fromCharCode(this.look) + "' was found instead";
 			}
-			throw new hipack.ParseError(this, message);
+			throw new hipack.ParseError(this, errmsg);
 		}
 		this.nextCharCode();
 	}
