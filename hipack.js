@@ -290,9 +290,10 @@
 			if (this.indent < 0 && this.output[this.output.length-1] != ":") {
 				this.output += ":";
 			}
-			for (var a of annotations.get()) {
+			annotations = annotations.get();
+			for (var i = 0; i < annotations.length; i++) {
 				this.output += ":";
-				this.output += a;
+				this.output += annotations[i];
 			}
 			this.output += " ";
 		}
