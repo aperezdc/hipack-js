@@ -30,7 +30,24 @@ describe("hipack", function () {
 	it("has a noConflict() function", function () {
 		hipack.should.have.property("noConflict").which.is.a.Function();
 	});
-
+	it("has an ANNOT_INT property", function () {
+		hipack.should.have.property("ANNOT_INT").which.is.a.String();
+	});
+	it("has an ANNOT_FLOAT property", function () {
+		hipack.should.have.property("ANNOT_FLOAT").which.is.a.String();
+	});
+	it("has an ANNOT_BOOL property", function () {
+		hipack.should.have.property("ANNOT_BOOL").which.is.a.String();
+	});
+	it("has an ANNOT_STRING property", function () {
+		hipack.should.have.property("ANNOT_STRING").which.is.a.String();
+	});
+	it("has an ANNOT_LIST property", function () {
+		hipack.should.have.property("ANNOT_LIST").which.is.a.String();
+	});
+	it("has an ANNOT_DICT property", function () {
+		hipack.should.have.property("ANNOT_DICT").which.is.a.String();
+	});
 
 	describe(".dump()", function () {
 
@@ -208,6 +225,25 @@ describe("hipack", function () {
 			hipack.load("value { a 1 b 2 }").should.have.property("value")
 				.which.is.an.Object().and.is.eql({ a:1, b:2 });
 		});
-
+		it("parses a single annotation", function () {
+			hipack.load("value :annot { a 1 }", function (annotations, _, value) {
+				if (typeof value === "object") {
+					annotations.contains("annot").should.equal(true);
+					annotations.contains("other").should.equal(false);
+				}
+				return value;
+			}).should.have.property("value").which.is.an.Object().and.is.eql({ a:1 });
+		});
+		it("parses multiple annotations", function () {
+			hipack.load("value :ann1 :ann2 :ann3 { a 1 }", function (annotations, _, value) {
+				if (typeof value === "object") {
+					annotations.contains("ann1").should.equal(true);
+					annotations.contains("ann2").should.equal(true);
+					annotations.contains("ann3").should.equal(true);
+					annotations.contains("other").should.equal(false);
+				}
+				return value;
+			}).should.have.property("value").which.is.an.Object().and.is.eql({ a:1 });
+		});
 	});
 });

@@ -16,6 +16,20 @@
 		return hipack;
 	}
 
+	/* Minimal implementation of ES6 Set, used as fall-back. */
+	if (Set === undefined) {
+		var Set = function () { this._set = Object.create(null) }
+		Set.prototype.add = function (item) { this._set[item] = true }
+		Set.prototype.contains = function (item) { return !!this._set[item] }
+	}
+
+	hipack.ANNOT_INT    = ".int";
+	hipack.ANNOT_FLOAT  = ".float";
+	hipack.ANNOT_BOOL   = ".bool";
+	hipack.ANNOT_STRING = ".string";
+	hipack.ANNOT_LIST   = ".list";
+	hipack.ANNOT_DICT   = ".dict";
+
 
 	function isHiPackWhitespace(ch) {
 		switch (ch) {
@@ -315,9 +329,13 @@
 		}
 	}
 
+	hipack.cast = function (annotations, input, value) { return value }
 
-	hipack.Parser = function (input) {
+	hipack.Parser = function (input, cast) {
+		if (cast === undefined)
+			cast = hipack.cast;
 		this.input  = input;
+		this.cast   = cast;
 		this.look   = 0;
 		this.line   = 1;
 		this.column = 0;
@@ -370,10 +388,12 @@
 			throw new hipack.ParseError(this, "key expected");
 		return key;
 	}
-	hipack.Parser.prototype.parseString = function () {
-		var str = "";
+	hipack.Parser.prototype.parseString = function (annotations) {
 		this.matchCharCode(0x22 /* '"' */);
+		var s = '"';  // Original input string literal
+		var str = ""; // String with escapes converted
 		while (this.look != 0x22 /* '"' */ && this.look != EOF) {
+			s += _fromCharCode(this.look);
 			/* Handle escapes. */
 			if (this.look == 0x5C /* '\\' */) {
 				switch (this.look = this.nextCharCodeRaw()) {
@@ -395,9 +415,11 @@
 			this.look = this.nextCharCodeRaw();
 		}
 		this.matchCharCode(0x22 /* '"'" */);
-		return str;
+		s += '"';
+		annotations.add(hipack.ANNOT_STRING);
+		return this.cast(annotations, s, str);
 	}
-	hipack.Parser.prototype.parseList = function () {
+	hipack.Parser.prototype.parseList = function (annotations) {
 		this.matchCharCode(0x5B /* '[' */);
 		this.skipWhite();
 
@@ -417,34 +439,38 @@
 		}
 
 		this.matchCharCode(0x5D /* ']' */);
-		return list;
+		annotations.add(hipack.ANNOT_LIST);
+		return this.cast(annotations, null, list);
 	}
-	hipack.Parser.prototype.parseDict = function () {
+	hipack.Parser.prototype.parseDict = function (annotations) {
 		this.matchCharCode(0x7B /* '{' */);
 		this.skipWhite();
 		var dict = this.parseKeyValItems(0x7D /* '}' */);
 		this.matchCharCode(0x7D /* '}' */);
-		return dict;
+		annotations.add(hipack.ANNOT_DICT);
+		return this.cast(annotations, null, dict);
 	}
-	hipack.Parser.prototype.parseBoolean = function () {
+	hipack.Parser.prototype.parseBoolean = function (annotations) {
+		annotations.add(hipack.ANNOT_BOOL);
+		var s = _fromCharCode(this.look);
 		if (this.look == 0x54 /* 'T' */ || this.look == 0x74 /* 't' */) {
 			this.nextCharCode();
 			this.matchCharCode(0x72 /* 'r' */);
 			this.matchCharCode(0x75 /* 'u' */);
 			this.matchCharCode(0x65 /* 'e' */);
-			return true;
+			return this.cast(annotations, s + "rue", true);
 		} else if (this.look == 0x46 /* 'F' */ || this.look == 0x66 /* 'f' */) {
 			this.nextCharCode();
 			this.matchCharCode(0x61 /* 'a' */);
 			this.matchCharCode(0x6C /* 'l' */);
 			this.matchCharCode(0x73 /* 's' */);
 			this.matchCharCode(0x65 /* 'e' */);
-			return false;
+			return this.cast(annotations, s + "alse", false);
 		} else {
 			throw new hipack.ParseError(this, "boolean value expected");
 		}
 	}
-	hipack.Parser.prototype.parseNumber = function () {
+	hipack.Parser.prototype.parseNumber = function (annotations) {
 		var number = "";
 		var hasSign = false;
 		if (this.look == 0x2B /* '+' */ || this.look == 0x2D /* '-' */) {
@@ -513,50 +539,62 @@
 			if (expSeen || dotSeen) {
 				throw new hipack.ParseError(this, "invalid octal number");
 			}
-			return _parseInt(number, 8);
+			annotations.add(hipack.ANNOT_INT);
+			return this.cast(annotations, number, _parseInt(number, 8));
 		} else if (dotSeen || expSeen) {
 			// TODO: assert(!isHex);
 			// TODO: assert(!isOctal);
-			return _parseFloat(number);
+			annotations.add(hipack.ANNOT_FLOAT);
+			return this.cast(annotations, number, _parseFloat(number));
 		} else {
 			// TODO: assert(!isHex);
 			// TODO: assert(!isOctal);
 			// TODO: assert(!expSeen);
 			// TODO: assert(!dotSeen);
-			return _parseInt(number, 10);
+			annotations.add(hipack.ANNOT_INT);
+			return this.cast(annotations, number, _parseInt(number, 10));
 		}
 	}
+	hipack.Parser.prototype.parseAnnotations = function () {
+		var annotations = new Set();
+		while (this.look == 0x3A /* ':' */) {
+			this.nextCharCode();
+			var key = this.parseKey();
+			if (annotations.contains(key)) {
+				throw new ParseError(this, "duplicate annotation: " + key);
+			}
+			annotations.add(key);
+			this.skipWhite();
+		}
+		return annotations;
+	}
 	hipack.Parser.prototype.parseValue = function () {
+		var annotations = this.parseAnnotations();
 		switch (this.look) {
-			case 0x22 /* '"' */: return this.parseString();
-			case 0x5B /* '[' */: return this.parseList();
-			case 0x7B /* '{' */: return this.parseDict();
+			case 0x22 /* '"' */: return this.parseString(annotations);
+			case 0x5B /* '[' */: return this.parseList(annotations);
+			case 0x7B /* '{' */: return this.parseDict(annotations);
 			case 0x54 /* 'T' */:
 			case 0x74 /* 't' */:
 			case 0x46 /* 'F' */:
-			case 0x66 /* 'f' */: return this.parseBoolean();
-			default: return this.parseNumber();
+			case 0x66 /* 'f' */: return this.parseBoolean(annotations);
+			default: return this.parseNumber(annotations);
 		}
 	}
 	hipack.Parser.prototype.parseKeyValItems = function (eos) {
 		var dict = {};
-		while (this.look != eos) {
+		while (this.look != eos && this.look != EOF) {
 			var key = this.parseKey();
 			var gotSeparator = false;
-
 			if (isHiPackWhitespace(this.look)) {
 				gotSeparator = true;
 				this.skipWhite();
-			}
-			switch (this.look) {
-				case 0x3A /* ':' */:
-					this.nextCharCode();
-					this.skipWhite();
-					/* fall-through */
-				case 0x7B /* '{' */:
-				case 0x5B /* '[' */:
-					gotSeparator = true;
-					break
+			} else if (this.look == 0x3A /* ':' */) {
+				gotSeparator = true;
+				this.nextCharCode();
+				this.skipWhite();
+			} else if (this.look == 0x7B /* '{' */ || this.look == 0x5B /* '[' */) {
+				gotSeparator = true;
 			}
 
 			if (!gotSeparator) {
@@ -596,8 +634,8 @@
 	}
 
 
-	hipack.load = function (input) {
-		return (new hipack.Parser(String(input))).parseMessage();
+	hipack.load = function (input, cast) {
+		return (new hipack.Parser(String(input), cast)).parseMessage();
 	}
 
 
