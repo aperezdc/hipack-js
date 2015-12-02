@@ -80,6 +80,26 @@ describe("hipack", function () {
 					"  value: 42\n" +
 					"}\n");
 		});
+		it("encodes values with annotations", function () {
+			hipack.dump({ value: 1 }, false, function (obj, ann) {
+				ann.add("annot"); return obj;
+			}).should.equal("value: :annot 1\n");
+		});
+		it("encodes values with annotations compactly", function () {
+			hipack.dump({ value: 1 }, true, function (obj, ann) {
+				ann.add("annot"); return obj;
+			}).should.equal("value::annot 1");
+		});
+		it("encodes compound values with annotations", function () {
+			hipack.dump({ value: [] }, false, function (obj, ann) {
+				ann.add("annot"); return obj;
+			}).should.equal("value :annot []\n");
+		});
+		it("encodes compund values with annotations compactly", function () {
+			hipack.dump({ value: [] }, true, function (obj, ann) {
+				ann.add("annot"); return obj;
+			}).should.equal("value::annot []");
+		});
 
 		it("sorts dictionary keys", function () {
 			hipack.dump({ c:1, b:2, a:3 }).should.equal("a: 3\nb: 2\nc: 1\n");

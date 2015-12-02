@@ -20,7 +20,12 @@
 	if (Set === undefined) {
 		var Set = function () { this._set = Object.create(null) }
 		Set.prototype.add = function (item) { this._set[item] = true }
+		Set.prototype.remove = function (item) { delete this._set[item] }
 		Set.prototype.contains = function (item) { return !!this._set[item] }
+		Set.prototype.clear = function () { this._set = Object.create(null) }
+		Set.prototype.empty = function () { return Object.keys(this._set).length == 0 }
+		Set.prototype.size = function () { return Object.keys(this._set).length }
+		Set.prototype.get = function () { return Object.keys(this._set) }
 	}
 
 	hipack.ANNOT_INT    = ".int";
@@ -146,8 +151,13 @@
 	}
 
 
-	hipack.Dumper = function (compact) {
+	hipack.value = function (obj, annotations) { return obj }
+
+	hipack.Dumper = function (compact, value) {
+		if (value === undefined)
+			value = hipack.value;
 		this.indent = compact ? -1 : 0;
+		this.value  = value;
 		this.output = "";
 	}
 	hipack.Dumper.prototype.moreIndent = function () {
@@ -274,6 +284,18 @@
 		this.output += "}";
 	}
 	hipack.Dumper.prototype.dumpValue = function (value) {
+		var annotations = new Set();
+		value = this.value(value, annotations);
+		if (!annotations.empty()) {
+			if (this.indent < 0 && this.output[this.output.length-1] != ":") {
+				this.output += ":";
+			}
+			for (var a of annotations.get()) {
+				this.output += ":";
+				this.output += a;
+			}
+			this.output += " ";
+		}
 		var valueType = typeof value;
 		switch (valueType) {
 			case "number":
@@ -304,8 +326,8 @@
 	}
 
 
-	hipack.dump = function (data, compact) {
-		var dumper = new hipack.Dumper(Boolean(compact));
+	hipack.dump = function (data, compact, value) {
+		var dumper = new hipack.Dumper(Boolean(compact), value);
 		var keys = _objectKeys(data);
 		dumper.dumpKeyVal(data, keys.sort());
 		return dumper.output;
