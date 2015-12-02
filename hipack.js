@@ -367,7 +367,7 @@
 			this.nextCharCode();
 		}
 		if (key === null)
-			throw new hipack.ParseError(parser, "key expected");
+			throw new hipack.ParseError(this, "key expected");
 		return key;
 	}
 	hipack.Parser.prototype.parseString = function () {
