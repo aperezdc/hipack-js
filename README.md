@@ -9,7 +9,7 @@ format. The implementation and API are intentionally simple.
 Features:
 
 * Reading and writing HiPack formatted messages.
-* Works in NodeJS, IoJS, and browsers.
+* Works in NodeJS and browsers.
 * Small, self contained JavaScript implementation.
 * Less than 8kB when minified using [UglifyJS2](http://lisperator.net/uglifyjs/)!
 
@@ -17,8 +17,7 @@ Features:
 Installation
 ------------
 
-For [Node](http://nodejs.org) (or [IoJS](http://iojs.org)), `npm` can be used
-to install the module:
+For [Node](http://nodejs.org), `npm` can be used to install the module:
 
 ```sh
 npm install hipack-js
@@ -35,8 +34,7 @@ bower install hipack-js
 Usage
 -----
 
-(The following examples use [Node](http://nodejs.org), and should work with
-[IoJS](http://iojs.org) as well.)
+(The following examples use [Node](http://nodejs.org).)
 
 First, import the module:
 
