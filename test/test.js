@@ -266,4 +266,22 @@ describe("hipack", function () {
 			}).should.have.property("value").which.is.an.Object().and.is.eql({ a:1 });
 		});
 	});
+
+	describe("Parser", function () {
+		it("parses framed subsequent messages", function () {
+			var input = "{ value: 1 }\n" +
+				        "{ value: 2 }\n" +
+				        "{ value: 3 }\n";
+			var parser = new hipack.Parser(input);
+			for (var i = 1; i <= 3; i++) {
+				var msg = parser.parseMessage();
+				msg.should.have.property("value").which.is.eql(i);
+			}
+		});
+		it("returns null after the last framed message", function () {
+			var parser = new hipack.Parser("{ value: 42 }\n");
+			parser.parseMessage().should.have.property("value").which.is.eql(42);
+			should(parser.parseMessage()).equal(null);
+		});
+	});
 });

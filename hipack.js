@@ -363,6 +363,9 @@
 		this.line   = 1;
 		this.column = 0;
 		this.pos    = 0;
+		this.nextCharCode();
+		this.skipWhite();
+		this.framed = (this.look == 0x7B /* '{' */);
 	}
 	hipack.Parser.prototype.nextCharCodeRaw = function () {
 		if (this.pos >= this.input.length)
@@ -640,16 +643,16 @@
 		return dict;
 	}
 	hipack.Parser.prototype.parseMessage = function () {
-		this.nextCharCode();
-		this.skipWhite();
-
 		var result = null;
-		if (this.look == 0x7B /* '{' */) {
-			/* Input starts with a dictionary marker. */
-			this.nextCharCode();
-			this.skipWhite();
-			result = this.parseKeyValItems(0x7D /* '}' */);
-			this.matchCharCode(0x7D /* '}' */, "unterminated message, '}' expected");
+		if (this.framed) {
+			if (this.look != EOF) {
+				this.matchCharCode(0x7B /* '{' */);
+				this.nextCharCode();
+				this.skipWhite();
+				result = this.parseKeyValItems(0x7D /* '}' */);
+				this.matchCharCode(0x7D /* '}' */, "unterminated message, '}' expected");
+				this.skipWhite();
+			}
 		} else {
 			result = this.parseKeyValItems(EOF);
 		}
