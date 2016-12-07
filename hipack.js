@@ -559,7 +559,8 @@
 			if (expSeen || dotSeen) {
 				throw new hipack.ParseError(this, "invalid hex number");
 			}
-			return _parseInt(number, 16);
+			annotations.add(hipack.ANNOT_INT)
+			return this.cast(annotations, number, _parseInt(number, 16));
 		} else if (isOctal) {
 			// TODO: assert(!isHex);
 			if (expSeen || dotSeen) {
